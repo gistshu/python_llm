@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中醫諮詢</title>
+    <style>
+        body {
+            background-color: #8c9da7;
+            /* Line default bg */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 480px;
+            /* Mobile width */
+            background-color: #8c9da7;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .chat-header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.1em;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .chat-window {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* Scrollbar styling */
+        .chat-window::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-window::-webkit-scrollbar-thumb {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 3px;
+        }
+
+        .message {
+            max-width: 80%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 0.95em;
+            line-height: 1.5;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        /* Assistant message (Left) */
+        .message.assistant {
+            align-self: flex-start;
+            background-color: #ffffff;
+            color: #000;
+            border-top-left-radius: 2px;
+            margin-left: 45px;
+            /* space for avatar */
+            position: relative;
+        }
+
+        .assistant-avatar {
+            width: 45px;
+            height: 45px;
+            background-color: #eee;
+            border-radius: 50%;
+            position: absolute;
+            left: -55px;
+            top: -5px;
+            background-image: url('/static/avatar.png');
+            /* Virtual doctor avatar */
+            background-size: cover;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.assistant .assistant-name {
+            position: absolute;
+            top: -22px;
+            left: 0;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: #2c3e50;
+            white-space: nowrap;
+        }
+
+        /* User message (Right) */
+        .message.user {
+            align-self: flex-end;
+            background-color: #95ec69;
+            /* Line green */
+            color: #000;
+            border-top-right-radius: 2px;
+        }
+
+        .input-area {
+            background-color: #fff;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            outline: none;
+            font-size: 1em;
+            background-color: #f5f5f5;
+        }
+
+        button {
+            background-color: #2d3436;
+            /* Send button color */
+            color: #fff;
+            border: none;
+            padding: 0 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            font-size: 0.8em;
+            color: #555;
+            margin-left: 55px;
+            display: none;
+            margin-bottom: 5px;
+            align-self: flex-start;
+        }
+
+        .button-bar {
+            background-color: #f8f9fa;
+            padding: 8px 10px;
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            border-top: 1px solid #ddd;
+        }
+
+        .action-btn {
+            background-color: #fff;
+            color: #2c3e50;
+            border: 1px solid #ddd;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .action-btn:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+
+        .clinic-card {
+            background: #fff;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .clinic-card a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            👨‍⚕️ 中醫專家諮詢
+        </div>
+
+        <div class="chat-window" id="chatWindow">
+            <!-- Messages go here -->
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            對方正在輸入...
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="請輸入您的症狀或問題..." autocomplete="off">
+            <button id="sendBtn">發送</button>
+        </div>
+
+        <div class="button-bar">
+            <button class="action-btn" id="recommendBtn">推薦醫師</button>
+            <button class="action-btn" id="clinicBtn">最近院所</button>
+            <button class="action-btn" id="precautionBtn">注意事項</button>
+        </div>
+    </div>
+
+    <script>
+        const recommendBtn = document.getElementById('recommendBtn');
+        const clinicBtn = document.getElementById('clinicBtn');
+        const precautionBtn = document.getElementById('precautionBtn');
+
+        let history = []; // Keep track of conversation for context
+
+        function addMessage(role, text, isHtml = false) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add('message', role);
+
+            if (role === 'assistant') {
+                const avatar = document.createElement('div');
+                avatar.classList.add('assistant-avatar');
+
+                const contentDiv = document.createElement('div');
+                if (isHtml) {
+                    contentDiv.innerHTML = text;
+                } else {
+                    contentDiv.textContent = text;
+                }
+
+                const nameLabel = document.createElement('div');
+                nameLabel.classList.add('assistant-name');
+                nameLabel.textContent = "中醫教授";
+
+                msgDiv.appendChild(avatar);
+                msgDiv.appendChild(nameLabel);
+                msgDiv.appendChild(contentDiv);
+            } else {
+                msgDiv.textContent = text;
+            }
+
+            chatWindow.appendChild(msgDiv);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        async function sendMessage(overrideText = null) {
+            const text = overrideText !== null ? overrideText : userInput.value.trim();
+            if (!text) return;
+
+            addMessage('user', text);
+            userInput.value = '';
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            recommendBtn.disabled = true;
+            clinicBtn.disabled = true;
+            precautionBtn.disabled = true;
+            typingIndicator.style.display = 'block';
+
+            history.push({ role: "user", content: text });
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, history: history })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    addMessage('assistant', "⚠️ 系統錯誤: " + data.error);
+                } else {
+                    addMessage('assistant', data.response);
+                    history.push({ role: "assistant", content: data.response });
+                }
+            } catch (err) {
+                addMessage('assistant', "⚠️ 網路錯誤，請稍後再試。");
+                console.error(err);
+            } finally {
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+                recommendBtn.disabled = false;
+                clinicBtn.disabled = false;
+                precautionBtn.disabled = false;
+                userInput.focus();
+                typingIndicator.style.display = 'none';
+            }
+        }
+
+        recommendBtn.addEventListener('click', () => {
+            sendMessage("請根據對話內容，推薦適合我的中醫師及相關背景資訊。");
+        });
+
+        precautionBtn.addEventListener('click', () => {
+            const precautions = `
+            <strong>中醫日常注意事項：</strong><br>
+            1. 順應時節：早睡早起，依四季更迭調整作息。<br>
+            2. 飲食有節：三餐定時定量，少食生冷、辛辣與油膩。<br>
+            3. 調攝情志：保持心情平和，適度紓壓。<br>
+            4. 適度運動：每天進行如太極或散步等緩和運動。<br>
+            5. 勞逸結合：避免長時間熬夜或過度操勞。
+        `;
+            addMessage('assistant', precautions, true);
+        });
+
+        clinicBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                addMessage('assistant', "抱歉，您的瀏覽器不支援地理定位。");
+                return;
+            }
+
+            addMessage('assistant', "正在尋找您附近的配合院所...");
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                // Mock clinic data for demonstration
+                const clinics = [
+                    { name: "恆安中醫診所", addr: "台北市中山區南京東路二段", dist: "0.5km" },
+                    { name: "益智中醫診所", addr: "台北市中正區羅斯福路三段", dist: "1.2km" },
+                    { name: "養生堂中醫", addr: "台北市大安區信義路四段", dist: "2.3km" }
+                ];
+
+                let html = "<strong>為您找到附近的配合院所：</strong><br>";
+                clinics.forEach(c => {
+                    const mapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(c.name + ' ' + c.addr)}`;
+                    html += `
+                    <div class="clinic-card">
+                        <strong>${c.name}</strong> (${c.dist})<br>
+                        ${c.addr}<br>
+                        <a href="${mapUrl}" target="_blank">📍 在地圖中呈現</a>
+                    </div>
+                `;
+                });
+                addMessage('assistant', html, true);
+            }, (error) => {
+                addMessage('assistant', "無法獲取您的位置，請確認已授權定位權限。");
+            });
+        });
+
+        sendBtn.addEventListener('click', () => sendMessage());
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        // Initial greeting
+        window.onload = () => {
+            setTimeout(() => {
+                addMessage('assistant', "您好，我是您的專屬中醫顧問。請問有什麼可以幫您？");
+            }, 500);
+        };
+    </script>
+
+</body>
+
+</html>
